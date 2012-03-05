@@ -26,6 +26,7 @@ from django.db.models.fields import FieldDoesNotExist
 from django.db.models.query import Q, QuerySet
 from django.template.defaultfilters import capfirst
 from haystack.backends import SQ
+from haystack import connections
 from haystack.query import SearchQuerySet
 from tagging.models import Tag, TaggedItem
 from tagging.utils import get_tag_list
@@ -115,9 +116,14 @@ class Sort(object):
         if empty_value is not EMPTY:
             if empty_value is None:
                 kwargs = {'%s__isnull' % field: True}
-            else:
-                kwargs = {'%s__exact' % field: empty_value}
-
+            elif isinstance(queryset, SearchQuerySet):
+                if 'WhooshEngine' in \
+                        connections[queryset.query._using].options['ENGINE']:
+                    # HACK __exact queries don't work on Whoosh:
+                    # https://github.com/toastdriven/django-haystack/issues/529
+                    kwargs = {field: empty_value}
+                else:
+                    kwargs = {'%s__exact' % field: empty_value}
             queryset = queryset.exclude(**kwargs)
         return queryset.order_by(''.join(('-' if descending else '', field)))
 
