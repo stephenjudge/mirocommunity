@@ -117,13 +117,15 @@ class Sort(object):
             if empty_value is None:
                 kwargs = {'%s__isnull' % field: True}
             elif isinstance(queryset, SearchQuerySet):
-                if 'WhooshEngine' in \
-                        connections[queryset.query._using].options['ENGINE']:
+                if ('WhooshEngine' in
+                    connections[queryset.query._using].options['ENGINE']):
                     # HACK __exact queries don't work on Whoosh:
                     # https://github.com/toastdriven/django-haystack/issues/529
                     kwargs = {field: empty_value}
                 else:
                     kwargs = {'%s__exact' % field: empty_value}
+            else:
+                kwargs = {'%s__exact' % field: empty_value}
             queryset = queryset.exclude(**kwargs)
         return queryset.order_by(''.join(('-' if descending else '', field)))
 
